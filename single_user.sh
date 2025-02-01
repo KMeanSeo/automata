@@ -1,5 +1,13 @@
 ORIGINAL_DIR=$(pwd)
 
+# 🔹 Sudo 비밀번호를 한 번만 입력하도록 설정
+echo "🔹 Requesting sudo access... Please enter your password."
+sudo -v  # sudo 권한을 미리 요청
+
+# 🔹 sudo 인증이 만료되지 않도록 계속 갱신 (백그라운드 실행)
+while true; do sudo -v; sleep 60; done &
+
+
 echo "🔹 Installing zsh and required packages..."
 sudo apt update && sudo apt install -y zsh git wget unzip fonts-powerline
 
