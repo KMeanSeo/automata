@@ -8,11 +8,11 @@ git clone https://github.com/KMeanSeo/automata.git && cd automata && chmod +x si
 Multi user version
 
 ```
-git clone https://github.com/KMeanSeo/automata.git && chmod +x auto_zsh.sh && ./auto_zsh.sh
+git clone https://github.com/KMeanSeo/automata.git && cd automata && chmod +x auto_zsh.sh && ./auto_zsh.sh
 ```
 
 Multi user version && Anaconda
 
 ```
-git clone https://github.com/KMeanSeo/automata.git && chmod +x auto_anaconda.sh && ./auto_anaconda.sh
+git clone https://github.com/KMeanSeo/automata.git && cd automata && chmod +x auto_anaconda.sh && ./auto_anaconda.sh
 ```
