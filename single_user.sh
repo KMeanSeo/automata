@@ -1,62 +1,65 @@
+#!/bin/bash
+
+# 현재 작업 디렉토리 저장
 ORIGINAL_DIR=$(pwd)
 
-# 🔹 Sudo 비밀번호를 한 번만 입력하도록 설정
-echo "🔹 Requesting sudo access... Please enter your password."
+# Sudo 비밀번호를 한 번만 입력하도록 설정
+echo "Requesting sudo access... Please enter your password."
 sudo -v  # sudo 권한을 미리 요청
 
-# 🔹 sudo 인증이 만료되지 않도록 계속 갱신 (백그라운드 실행)
-while true; do sudo -v; sleep 60; done &
+# sudo 인증이 만료되지 않도록 유지 (백그라운드 실행)
+while true; do sudo -v; sleep 300; done &
 
+echo "Installing Zsh and required packages..."
+sudo apt update && sudo apt install -y zsh git wget unzip fonts-powerline curl
 
-echo "🔹 Installing zsh and required packages..."
-sudo apt update && sudo apt install -y zsh git wget unzip fonts-powerline
+# Zsh에서 실행되도록 강제 변경
+if [ -z "$ZSH_VERSION" ]; then
+    echo "Switching to Zsh for proper execution..."
+    export ZSH_SETUP_DONE=1
+    exec sudo -u "$USER" zsh "$0" "$@"
+    exit
+fi
 
-echo "🔹 Changing default shell to Zsh..."
-chsh -s "$(which zsh)"
-touch ~/.zshrc
+# Zsh로 전환된 후에도 중복 실행 방지
+if [ "$ZSH_SETUP_DONE" = "1" ]; then
+    echo "Now running Zsh! Continuing setup..."
+fi
 
-echo "🔹 Installing Oh-My-Zsh..."
+echo "Changing default shell to Zsh..."
+sudo chsh -s "$(which zsh)" "$USER"
+
+echo "Installing Oh-My-Zsh..."
 if [ ! -d "$HOME/.oh-my-zsh" ]; then
-    yes | sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+    yes | sudo -u "$USER" sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 fi
 
-echo "🔹 Installing Powerlevel10k theme..."
-if [ ! -d "$HOME/.oh-my-zsh/custom/themes/powerlevel10k" ]; then
-    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$HOME/.oh-my-zsh/custom/themes/powerlevel10k"
+echo "Configuring .zshrc..."
+if [ ! -f "$HOME/.zshrc" ]; then
+    sudo -u "$USER" cp "$HOME/.oh-my-zsh/templates/zshrc.zsh-template" "$HOME/.zshrc"
 fi
 
-echo "🔹 Installing Zsh plugins..."
+# 기존 `ZSH_THEME` 값이 있는 경우 유지, 없는 경우 `crunch` 적용
+sudo -u "$USER" sed -i 's/^ZSH_THEME=.*/ZSH_THEME="crunch"/g' "$HOME/.zshrc"
+
+# 기본 플러그인 목록 추가 (기존 설정이 없는 경우만)
+if ! sudo -u "$USER" grep -q '^plugins=' "$HOME/.zshrc"; then
+    echo 'plugins=(git zsh-autosuggestions zsh-syntax-highlighting)' | sudo -u "$USER" tee -a "$HOME/.zshrc" > /dev/null
+else
+    sudo -u "$USER" sed -i 's/^plugins=.*/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/g' "$HOME/.zshrc"
+fi
+
+echo "Installing Zsh plugins..."
 if [ ! -d "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions" ]; then
-    git clone https://github.com/zsh-users/zsh-autosuggestions "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+    sudo -u "$USER" git clone https://github.com/zsh-users/zsh-autosuggestions "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
 fi
 if [ ! -d "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting" ]; then
-    git clone https://github.com/zsh-users/zsh-syntax-highlighting "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
+    sudo -u "$USER" git clone https://github.com/zsh-users/zsh-syntax-highlighting "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
 fi
 
-echo "🔹 Applying Powerlevel10k settings..."
-cp ".p10k.zsh" "$HOME/.p10k.zsh"
+echo "Applying Zsh settings..."
+sudo -u "$USER" zsh -c "source ~/.zshrc"
 
-echo "🔹 Configuring .zshrc..."
+echo "Cleaning up..."
 
-if [ ! -f "$HOME/.zshrc" ]; then
-    touch "$HOME/.zshrc"
-fi
-
-sed -i 's|^export ZSH=.*|export ZSH="$HOME/.oh-my-zsh"|' "$HOME/.zshrc"
-sed -i 's|^ZSH_THEME=.*|ZSH_THEME="powerlevel10k/powerlevel10k"|' "$HOME/.zshrc"
-sed -i 's|^plugins=(.*)|plugins=(git zsh-autosuggestions zsh-syntax-highlighting)|' "$HOME/.zshrc"
-
-# ✅ 초기 설정 마법사가 실행되지 않도록 설정 추가
-echo '[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh' >> "$HOME/.zshrc"
-echo 'POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD=true' >> "$HOME/.zshrc"
-
-cd "$ORIGINAL_DIR"
-echo "🔹 Cleaning up..."
-rm -rf "$ORIGINAL_DIR/auto_zsh"
-
-zsh
-
-source ~/.zshrc
-
-echo "✅ Zsh setup complete!"
-echo "🚀 Please restart your terminal and make sure to use a Nerd Font!"
+exec zsh
